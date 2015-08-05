@@ -1,19 +1,22 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
     }
 
     dependencies {
         classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.9.0'
-//        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.2'
+        classpath "me.champeau.gradle:jmh-gradle-plugin:0.2.0"
     }
 }
 
-plugins {
-  id 'java'
-  id 'com.github.johnrengelman.shadow' version '1.2.2'
-}
+apply plugin: 'java'
+
+apply plugin: 'eclipse'
+
+apply plugin: "me.champeau.gradle.jmh"
 
 targetCompatibility = '1.8'
 sourceCompatibility = '1.8'
@@ -74,6 +77,16 @@ apply plugin: 'license'
 
 apply from: file('gradle/license.gradle')
 
-apply from: file('jmh.gradle')
+jmh {
+    jmhVersion = '1.10.3'
+    humanOutputFile = null
+    if (project.hasProperty('jmh')) {
+        include = ".*" + project.jmh + ".*"
+    } else {
+        include = ".*"
+    }
+}
 
-apply plugin: 'RSIJMH'
+plugins.withType(EclipsePlugin) {
+    project.eclipse.classpath.plusConfigurations += [ configurations.jmh ]
+}
