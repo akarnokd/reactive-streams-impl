@@ -100,4 +100,8 @@ public final class ScalarAsyncSubscription<T> extends AtomicInteger implements S
             }
         }
     }
+    
+    public boolean isComplete() {
+        return get() == (REQUESTED | VALUE);
+    }
 }

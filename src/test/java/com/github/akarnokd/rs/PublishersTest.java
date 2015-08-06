@@ -16,6 +16,8 @@
 package com.github.akarnokd.rs;
 
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Stream;
 
 import org.junit.*;
 import org.reactivestreams.Publisher;
@@ -57,5 +59,49 @@ public class PublishersTest {
         Publisher<Integer> source = Publishers.fromArray(1, 2, 3, 4);
         List<Integer> result = Publishers.getList(Publishers.take(source, 2));
         Assert.assertEquals(Arrays.asList(1, 2), result);
+    }
+    
+    @Test
+    public void fromStream() {
+        Publisher<Integer> source = Publishers.fromStream(java.util.stream.Stream.of(1, 2, 3, 4));
+        List<Integer> result = Publishers.getListNow(source);
+        Assert.assertEquals(Arrays.asList(1, 2, 3, 4), result);
+    }
+    
+    @Test
+    public void fromStreamAndTake() {
+        Stream<Integer> s = java.util.stream.Stream.of(1, 2, 3, 4);
+        Publisher<Integer> source = Publishers.fromStream(s);
+        List<Integer> result = Publishers.getListNow(Publishers.take(source, 2));
+        Assert.assertEquals(Arrays.asList(1, 2), result);
+    }
+    
+    @Test(expected = IllegalStateException.class)
+    public void fromStreamExhausted() {
+        Stream<Integer> s = java.util.stream.Stream.of(1, 2, 3, 4);
+        s.count();
+        Publisher<Integer> source = Publishers.fromStream(s);
+        List<Integer> result = Publishers.getListNow(source);
+        Assert.assertEquals(Collections.emptyList(), result);
+        
+    }
+    @Test(expected = IllegalStateException.class)
+    public void fromStreamClosed() {
+        Publisher<Integer> source;
+        try (Stream<Integer> s = java.util.stream.Stream.of(1, 2, 3, 4)) {
+            source = Publishers.fromStream(s);
+        }
+        List<Integer> result = Publishers.getListNow(source);
+        Assert.assertEquals(Collections.emptyList(), result);
+        
+    }
+    
+    @Test
+    public void observeOn() {
+        Publisher<Integer> source = Publishers.fromArray(1, 2, 3, 4, 5);
+        Publisher<Integer> result = Publishers.observeOn(source, ForkJoinPool.commonPool());
+
+        List<Integer> list = Publishers.getList(result);
+        Assert.assertEquals(Arrays.asList(1, 2, 3, 4, 5), list);
     }
 }

@@ -17,10 +17,12 @@
 package com.github.akarnokd.rs.impl.subs;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.*;
 
 import org.reactivestreams.Subscription;
+
+import com.github.akarnokd.rs.impl.queue.MpscLinkedQueue;
+import com.github.akarnokd.rs.impl.util.Util;
 
 /**
  * 
@@ -34,7 +36,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
     volatile boolean cancelled;
     volatile long missedRequested;
     volatile long missedProduced;
-    final Queue<Subscription> missedSubscription = new ConcurrentLinkedQueue<>();
+    final Queue<Subscription> missedSubscription = new MpscLinkedQueue<>();
     
     static final AtomicLongFieldUpdater<SubscriptionArbiter> MISSED_REQUESTED =
             AtomicLongFieldUpdater.newUpdater(SubscriptionArbiter.class, "missedRequested");
@@ -57,7 +59,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
             new IllegalArgumentException("n > 0 required").printStackTrace();
             return;
         }
-        RequestManager.fastpathLoop(this, () -> {
+        Util.fastpathLoop(this, () -> {
             addRequested(n);
             Subscription s = actual;
             if (s != null) {
@@ -73,7 +75,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
             new IllegalArgumentException("n > 0 required").printStackTrace();
             return;
         }
-        RequestManager.fastpathLoop(this, () -> {
+        Util.fastpathLoop(this, () -> {
             long r = requested;
             long u = r - n;
             if (u < 0L) {
@@ -88,7 +90,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
     
     public void setSubscription(Subscription s) {
         Objects.requireNonNull(s);
-        RequestManager.fastpathLoop(this, () -> {
+        Util.fastpathLoop(this, () -> {
             Subscription a = actual;
             if (a != null) {
                 a.cancel();
@@ -106,7 +108,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
             return;
         }
         cancelled = true;
-        RequestManager.fastpath(this, () -> {
+        Util.fastpath(this, () -> {
             Subscription a = actual;
             if (a != null) {
                 actual = null;

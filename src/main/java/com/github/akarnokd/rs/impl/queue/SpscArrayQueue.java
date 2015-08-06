@@ -19,6 +19,8 @@ package com.github.akarnokd.rs.impl.queue;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import com.github.akarnokd.rs.impl.util.Util;
+
 import sun.misc.Contended;
 
 /**
@@ -42,19 +44,13 @@ public final class SpscArrayQueue<T> extends AtomicReferenceArray<T> implements 
             AtomicLongFieldUpdater.newUpdater(SpscArrayQueue.class, "consumerIndex");
     
     public SpscArrayQueue(int capacity) {
-        super(roundUp(capacity));
+        super(Util.roundUp(capacity));
         int len = length();
         this.mask = len - 1;
         this.capacitySkip = len - capacity; 
     }
     
-    static int roundUp(int capacity) {
-        if (capacity <= 0) {
-            throw new IllegalArgumentException("capacity > 0 required");
-        }
-        int tz = 32 - Integer.numberOfLeadingZeros(capacity);
-        return 1 << tz;
-    }
+    
     @Override
     public boolean offer(T value) {
         Objects.requireNonNull(value);

@@ -16,7 +16,9 @@
 package com.github.akarnokd.rs;
 
 import java.util.*;
-import java.util.function.Function;
+import java.util.concurrent.*;
+import java.util.function.*;
+import java.util.stream.Stream;
 
 import org.reactivestreams.Publisher;
 
@@ -107,5 +109,62 @@ public enum Publishers {
         ListSubscriber<T> s = new ListSubscriber<>();
         source.subscribe(s);
         return s.getList();
+    }
+    
+    public static <T> Publisher<T> fromStream(Stream<? extends T> source) {
+        Objects.requireNonNull(source);
+        return new StreamSource<>(source);
+    }
+    
+    public static <T> Publisher<T> fromIterable(Iterable<? extends T> source) {
+        Objects.requireNonNull(source);
+        return new IterableSource<>(source);
+    }
+    
+    public static <T> Publisher<T> fromCallable(Callable<? extends T> callable) {
+        Objects.requireNonNull(callable);
+        return new ScalarAsyncSource<>(callable);
+    }
+    /**
+     * <p>Cancelling the subscription won't cancel the future.
+     * @param future
+     * @return
+     */
+    public static <T> Publisher<T> fromFuture(CompletableFuture<? extends T> future) {
+        Objects.requireNonNull(future);
+        return new CompletableFutureSource<>(future);
+    }
+    
+    public static <T> Publisher<T> subscribeOn(Publisher<? extends T> source, ExecutorService executor) {
+        // direct chaining of subscribeOn is a waste
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(executor);
+        return subscribeOn0(source, () -> executor);
+    }
+    public static <T> Publisher<T> subscribeOn(Publisher<? extends T> source, Supplier<ExecutorService> executorSupplier) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(executorSupplier);
+        return subscribeOn0(source, executorSupplier);
+    }
+    @SuppressWarnings("unchecked")
+    private static <T> Publisher<T> subscribeOn0(Publisher<? extends T> source, Supplier<ExecutorService> executorSupplier) {
+        if (source instanceof SubscribeOn) {
+            return (Publisher<T>)source;
+        }
+        return new SubscribeOn<>(source, executorSupplier);
+        
+    }
+    
+    public static <T> Publisher<T> defer(Supplier<? extends Publisher<? extends T>> publisherSupplier) {
+        return new Defer<>(publisherSupplier);
+    }
+    
+    public static <T> Publisher<T> observeOn(Publisher<? extends T> source, ExecutorService executor) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(executor);
+        return observeOn0(source, () -> executor, bufferSize(), false);
+    }
+    public static <T> Publisher<T> observeOn0(Publisher<? extends T> source, Supplier<ExecutorService> executorSupplier, int bufferSize, boolean delayError) {
+        return new ObserveOn<>(source, executorSupplier, bufferSize, delayError);
     }
 }

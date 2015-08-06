@@ -16,6 +16,7 @@
 
 package com.github.akarnokd.rs.impl.res;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -36,7 +37,9 @@ public final class SerialResource extends AtomicReference<Resource> implements R
         lazySet(res);
     }
     public void setNext(Resource next) {
+        Objects.requireNonNull(next);
         for (;;) {
+            @SuppressWarnings("resource")
             Resource ac = get();
             if (ac == CLOSED) {
                 next.close();
