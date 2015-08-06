@@ -127,8 +127,9 @@ public enum Publishers {
     }
     /**
      * <p>Cancelling the subscription won't cancel the future.
-     * @param future
-     * @return
+     * @param <T> the value type
+     * @param future the future to turn into a Publisher
+     * @return the Publisher emitting the result value or exception from the given future
      */
     public static <T> Publisher<T> fromFuture(CompletableFuture<? extends T> future) {
         Objects.requireNonNull(future);
@@ -176,5 +177,26 @@ public enum Publishers {
 
     public static <T> Publisher<T> observeOn0(Publisher<? extends T> source, Supplier<ExecutorService> executorSupplier, int bufferSize, boolean delayError) {
         return new ObserveOn<>(source, executorSupplier, bufferSize, delayError);
+    }
+    
+    public static <T, U> Publisher<U> map(Publisher<? extends T> source, Function<? super T, ? extends U> mapper) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(mapper);
+        if (source instanceof Mapper) {
+            @SuppressWarnings("unchecked")
+            Mapper<Object, T> m = (Mapper<Object, T>)source;
+            return new Mapper<>(m.source(), m.function().andThen(mapper));
+        }
+        return new Mapper<>(source, mapper);
+    }
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <T> Publisher<T> filter(Publisher<? extends T> source, Predicate<? super T> filter) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(filter);
+        if (source instanceof Filter) {
+            Filter<? extends T> m = (Filter<? extends T>)source;
+            return new Filter(m.source(), m.filter().and((Predicate)filter));
+        }
+        return new Filter<>(source, filter);
     }
 }

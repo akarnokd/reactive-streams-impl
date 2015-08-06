@@ -23,7 +23,7 @@ import java.util.function.Supplier;
 import org.reactivestreams.*;
 
 import com.github.akarnokd.rs.impl.queue.SpscArrayQueue;
-import com.github.akarnokd.rs.impl.subs.*;
+import com.github.akarnokd.rs.impl.subs.RequestManager;
 import com.github.akarnokd.rs.impl.util.Util;
 
 /**

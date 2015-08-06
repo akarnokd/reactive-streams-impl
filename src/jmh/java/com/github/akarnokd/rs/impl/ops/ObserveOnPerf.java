@@ -76,16 +76,16 @@ public class ObserveOnPerf {
     public Object observeOn() {
         return Publishers.getScalar(source);
     }
-    @Benchmark
+//    @Benchmark
     public Object observeOnExec() {
         return Publishers.getScalar(sourceExec);
     }
-    @Benchmark
+//    @Benchmark
     public Object observeOnIter() {
         return Publishers.getScalar(sourceIter);
     }
     
-    @Benchmark
+//    @Benchmark
     public Object rxObserveOn() {
         if (bufferSize != RxRingBuffer.SIZE) {
             throw new RuntimeException("Irrelevant buffer size");
@@ -93,13 +93,14 @@ public class ObserveOnPerf {
         return blocking.last();
     }
 
-    @Benchmark
+//    @Benchmark
     public Object rxObserveOnFJ() {
         if (bufferSize != RxRingBuffer.SIZE) {
             throw new RuntimeException("Irrelevant buffer size");
         }
         return blockingFJ.last();
     }
+//    @Benchmark
     public Object rxObserveOnExec() {
         if (bufferSize != RxRingBuffer.SIZE) {
             throw new RuntimeException("Irrelevant buffer size");

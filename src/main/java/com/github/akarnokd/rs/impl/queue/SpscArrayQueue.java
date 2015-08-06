@@ -21,8 +21,6 @@ import java.util.concurrent.atomic.*;
 
 import com.github.akarnokd.rs.impl.util.Util;
 
-import sun.misc.Contended;
-
 /**
  * 
  */
@@ -31,9 +29,7 @@ public final class SpscArrayQueue<T> extends AtomicReferenceArray<T> implements 
     private static final long serialVersionUID = 6210984603741293445L;
     final int mask;
     final int capacitySkip;
-    @Contended
     volatile long producerIndex;
-    @Contended
     volatile long consumerIndex;
 
     @SuppressWarnings("rawtypes")
