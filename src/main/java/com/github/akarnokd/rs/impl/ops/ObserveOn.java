@@ -160,7 +160,7 @@ public final class ObserveOn<T> implements Publisher<T> {
             if (WIP.getAndIncrement(this) != 0) {
                 return;
             }
-            
+
             Future<?> curr = future;
             Future<?> f;
             try {
@@ -180,14 +180,21 @@ public final class ObserveOn<T> implements Publisher<T> {
         
         @Override
         public void run() {
+            try {
+                emissionLoop();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        
+        void emissionLoop() {
             long r = get();
             final long r0 = r;
             Future<?> f = null;
             final Queue<T> q = queue;
             final Subscriber<? super T> s = actual;
             final boolean de = delayError;
-            final Subscription sub = subscription;
-            final long limit = bufferSize >> 1;
+            Subscription sub = subscription;
             
             do {
                 boolean d = done;
@@ -216,21 +223,23 @@ public final class ObserveOn<T> implements Publisher<T> {
                         return;
                     }
                     
-                    r--;
                     e++;
-                    if (e >= limit) {
-                        sub.request(e);
-                        e = 0L;
-                    }
+                    r--;
                 }
-                
                 if (e != 0L) {
+                    if (sub == null) {
+                        sub = subscription;
+                        if (sub == null) {
+                            new IllegalStateException("Emission without subscription").printStackTrace();
+                        }
+                    }
                     sub.request(e);
                     if (r0 != Long.MAX_VALUE) {
                         r = addAndGet(-e);
+                    } else {
+                        r = r0;
                     }
                 }
-                
                 if (wip == 1) {
                     f = future;
                 }

@@ -69,7 +69,7 @@ public enum Publishers {
         Objects.requireNonNull(source);
         ScalarSubscriber<T> s = new ScalarSubscriber<>();
         source.subscribe(s);
-        return s.get();
+        return s.getValue();
     }
     public static <T> T getScalarNow(Publisher<? extends T> source) {
         Objects.requireNonNull(source);
@@ -164,6 +164,16 @@ public enum Publishers {
         Objects.requireNonNull(executor);
         return observeOn0(source, () -> executor, bufferSize(), false);
     }
+    
+    public static <T> Publisher<T> observeOn(Publisher<? extends T> source, ExecutorService executor, int bufferSize) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(executor);
+        if (bufferSize <= 0) {
+            throw new IllegalArgumentException("bufferSize > 0 required");
+        }
+        return observeOn0(source, () -> executor, bufferSize, false);
+    }
+
     public static <T> Publisher<T> observeOn0(Publisher<? extends T> source, Supplier<ExecutorService> executorSupplier, int bufferSize, boolean delayError) {
         return new ObserveOn<>(source, executorSupplier, bufferSize, delayError);
     }
