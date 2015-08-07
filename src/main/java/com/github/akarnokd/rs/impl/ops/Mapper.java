@@ -38,7 +38,7 @@ public final class Mapper<T, U> implements Publisher<U> {
     }
     @Override
     public void subscribe(Subscriber<? super U> s) {
-        
+        source.subscribe(new MapperSubscriber<>(s, function));
     }
     static final class MapperSubscriber<T, U> implements Subscriber<T> {
         final Subscriber<? super U> actual;

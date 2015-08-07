@@ -17,6 +17,7 @@
 package com.github.akarnokd.rs.impl.ops;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 import org.reactivestreams.*;
 
@@ -25,31 +26,38 @@ import com.github.akarnokd.rs.impl.subs.RequestManager;
 /**
  * 
  */
-public final class ArraySource<T> implements Publisher<T> {
+public final class FusedArraySourceFilter<T> implements Publisher<T> {
     final T[] array;
-    public ArraySource(T[] array) {
+    final Predicate<? super T> predicate;
+    public FusedArraySourceFilter(T[] array, Predicate<? super T> predicate) {
         this.array = array;
+        this.predicate = predicate;
     }
     public T[] array() {
         return array;
     }
+    public Predicate<? super T> predicate() {
+        return predicate;
+    }
     @Override
     public void subscribe(Subscriber<? super T> s) {
-        s.onSubscribe(new ArraySourceSubscription<>(array, s));
+        s.onSubscribe(new FusedArraySourceFilterSubscription<>(array, predicate, s));
     }
-    static final class ArraySourceSubscription<T> extends AtomicLong implements Subscription {
+    static final class FusedArraySourceFilterSubscription<T> extends AtomicLong implements Subscription {
         /** */
         private static final long serialVersionUID = -225561973532207332L;
         
         final T[] array;
         final Subscriber<? super T> subscriber;
+        Predicate<? super T> predicate;
         
         int index;
         volatile boolean cancelled;
         
-        public ArraySourceSubscription(T[] array, Subscriber<? super T> subscriber) {
+        public FusedArraySourceFilterSubscription(T[] array, Predicate<? super T> predicate, Subscriber<? super T> subscriber) {
             this.array = array;
             this.subscriber = subscriber;
+            this.predicate = predicate;
         }
         @Override
         public void request(long n) {
@@ -69,7 +77,17 @@ public final class ArraySource<T> implements Publisher<T> {
                             return;
                         }
                         for (int j = i; j < len; j++) {
-                            s.onNext(a[j]);
+                            T v = a[j];
+                            boolean b;
+                            try {
+                                b = predicate.test(v);
+                            } catch (Throwable ex) {
+                                s.onError(ex);
+                                return;
+                            }
+                            if (b) {
+                                s.onNext(v);
+                            }
                             if (cancelled) {
                                 return;
                             }
@@ -82,7 +100,19 @@ public final class ArraySource<T> implements Publisher<T> {
                         return;
                     }
                     while (r != 0 && i < len) {
-                        s.onNext(a[i]);
+                        T v = a[i];
+                        boolean b;
+                        try {
+                            b = predicate.test(v);
+                        } catch (Throwable ex) {
+                            s.onError(ex);
+                            return;
+                        }
+                        if (b) {
+                            s.onNext(v);
+                            r--;
+                            e++;
+                        }
                         if (cancelled) {
                             return;
                         }
@@ -90,8 +120,6 @@ public final class ArraySource<T> implements Publisher<T> {
                             s.onComplete();
                             return;
                         }
-                        r--;
-                        e++;
                     }
                     index = i;
                     r = addAndGet(-e);

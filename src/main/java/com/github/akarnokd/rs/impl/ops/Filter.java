@@ -25,21 +25,21 @@ import org.reactivestreams.*;
  */
 public final class Filter<T> implements Publisher<T> {
     final Publisher<? extends T> source;
-    final Predicate<? super T> filter;
-    public Filter(Publisher<? extends T> source, Predicate<? super T> filter) {
+    final Predicate<? super T> predicate;
+    public Filter(Publisher<? extends T> source, Predicate<? super T> predicate) {
         this.source = source;
-        this.filter = filter;
+        this.predicate = predicate;
     }
     public Publisher<? extends T> source() {
         return source;
     }
-    public Predicate<? super T> filter() {
-        return filter;
+    public Predicate<? super T> predicate() {
+        return predicate;
     }
     
     @Override
     public void subscribe(Subscriber<? super T> s) {
-        source.subscribe(new FilterSubscriber<>(s, filter));
+        source.subscribe(new FilterSubscriber<>(s, predicate));
     }
     
     static final class FilterSubscriber<T> implements Subscriber<T> {

@@ -190,13 +190,21 @@ public enum Publishers {
         return new Mapper<>(source, mapper);
     }
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <T> Publisher<T> filter(Publisher<? extends T> source, Predicate<? super T> filter) {
+    public static <T> Publisher<T> filter(Publisher<? extends T> source, Predicate<? super T> predicate) {
         Objects.requireNonNull(source);
-        Objects.requireNonNull(filter);
+        Objects.requireNonNull(predicate);
+        if (source instanceof ArraySource) {
+            ArraySource m = (ArraySource)source;
+            return new FusedArraySourceFilter(m.array(), predicate);
+        } else
+        if (source instanceof FusedArraySourceFilter) {
+            FusedArraySourceFilter m = (FusedArraySourceFilter) source;
+            return new FusedArraySourceFilter(m.array(), m.predicate().and(predicate));
+        } else
         if (source instanceof Filter) {
-            Filter<? extends T> m = (Filter<? extends T>)source;
-            return new Filter(m.source(), m.filter().and((Predicate)filter));
+            Filter m = (Filter)source;
+            return new Filter(m.source(), m.predicate().and(predicate));
         }
-        return new Filter<>(source, filter);
+        return new Filter(source, predicate);
     }
 }
