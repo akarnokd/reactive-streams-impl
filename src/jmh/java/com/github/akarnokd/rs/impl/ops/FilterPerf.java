@@ -89,11 +89,11 @@ public class FilterPerf {
     public Object filterNoFuse() {
         return Publishers.getScalar(sourceNoFuse);
     }
-//    @Benchmark
+    @Benchmark
     public Object rxFilter3() {
         return blocking3.last();
     }
-//    @Benchmark
+    @Benchmark
     public Object rxFilter() {
         return blocking.last();
     }
