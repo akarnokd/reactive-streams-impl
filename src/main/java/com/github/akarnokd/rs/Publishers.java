@@ -71,6 +71,16 @@ public enum Publishers {
         source.subscribe(s);
         return s.getValue();
     }
+    public static <T> T getScalar(Publisher<? extends T> source, long batchSize) {
+        Objects.requireNonNull(source);
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("batchSize > 0 required");
+        }
+        ScalarBatchingSubscriber<T> s = new ScalarBatchingSubscriber<>(batchSize);
+        source.subscribe(s);
+        return s.getValue();
+    }
+    
     public static <T> T getScalarNow(Publisher<? extends T> source) {
         Objects.requireNonNull(source);
         ScalarSubscriber<T> s = new ScalarSubscriber<>();
@@ -204,11 +214,47 @@ public enum Publishers {
         if (source instanceof Filter) {
             Filter m = (Filter)source;
             return new Filter(m.source(), m.predicate().and(predicate));
+        } else
+        if (source instanceof FilterFuseable) {
+            FilterFuseable ff = (FilterFuseable) source;
+            return ff.fuse(predicate);
         }
         return new Filter(source, predicate);
     }
     
     public static <T, U> Publisher<T> takeUntil(Publisher<? extends T> source, Publisher<U> other) {
         return new TakeUntil<>(source, other);
+    }
+    public static <T> Publisher<T> empty() {
+        return EmptyPublisher.empty();
+    }
+    
+    public static <T> Publisher<T> error(Throwable error) {
+        return new ErrorSource<>(() -> error);
+    }
+    public static <T> Publisher<T> error(Supplier<? extends Throwable> error) {
+        return new ErrorSource<>(error);
+    }
+    
+    public static Publisher<Integer> range(int start, int count) {
+        if (count == 0) {
+            return empty();
+        } else
+        if (count == 1) {
+            return just(start);
+        }
+        if (start + (long)count > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Integer overflow");
+        }
+        return new RangeSource(start, count);
+    }
+    
+    /**
+     * Hides the identity of the source Publisher.
+     * @param source
+     * @return
+     */
+    public static <T> Publisher<T> asPublisher(Publisher<? extends T> source) {
+        return source::subscribe;
     }
 }

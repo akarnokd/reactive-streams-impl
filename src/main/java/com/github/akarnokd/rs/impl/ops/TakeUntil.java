@@ -18,8 +18,7 @@ package com.github.akarnokd.rs.impl.ops;
 
 import org.reactivestreams.*;
 
-import com.github.akarnokd.rs.impl.res.CompositeResource;
-import com.github.akarnokd.rs.impl.subs.SerializedSubscriber;
+import com.github.akarnokd.rs.impl.res.*;
 
 /**
  * 
@@ -35,27 +34,27 @@ public final class TakeUntil<T, U> implements Publisher<T> {
     public void subscribe(Subscriber<? super T> s) {
         SerializedSubscriber<T> serial = new SerializedSubscriber<>(s);
         
-        CompositeResource cres = new CompositeResource();
+        FixedResourceList frl = new FixedResourceList(2);
         
         other.subscribe(new Subscriber<U>() {
             @Override
             public void onSubscribe(Subscription s) {
-                cres.add(s::cancel);
+                frl.set(0, s::cancel);
                 s.request(Long.MAX_VALUE);
             }
             @Override
             public void onNext(U t) {
-                cres.close();
+                frl.close();
                 serial.onComplete();
             }
             @Override
             public void onError(Throwable t) {
-                cres.close();
+                frl.close();
                 serial.onError(t);
             }
             @Override
             public void onComplete() {
-                cres.close();
+                frl.close();
                 serial.onComplete();
             }
         });
@@ -63,7 +62,7 @@ public final class TakeUntil<T, U> implements Publisher<T> {
         source.subscribe(new Subscriber<T>() {
             @Override
             public void onSubscribe(Subscription s) {
-                cres.add(s::cancel);
+                frl.set(1, s::cancel);
                 serial.onSubscribe(s);
             }
             @Override
@@ -72,12 +71,12 @@ public final class TakeUntil<T, U> implements Publisher<T> {
             }
             @Override
             public void onError(Throwable t) {
-                cres.close();
+                frl.close();
                 serial.onError(t);
             }
             @Override
             public void onComplete() {
-                cres.close();
+                frl.close();
                 serial.onComplete();
             }
         });

@@ -42,9 +42,6 @@ public class FilterPerf {
     @Param({ "1", "1000", "1000000" })
     public int times;
     
-//    @Param({ "64", "128", "256", "512", "1024" })
-//    public int bufferSize;
-    
     Integer[] values;
     
     Publisher<Integer> source;

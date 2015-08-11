@@ -73,9 +73,11 @@ public final class Take<T> implements Publisher<T> {
         }
         @Override
         public void onNext(T t) {
-            actual.onNext(t);
-            if (--remaining == 0L) {
-                onComplete();
+            if (!done) {
+                actual.onNext(t);
+                if (--remaining == 0L) {
+                    onComplete();
+                }
             }
         }
         @Override

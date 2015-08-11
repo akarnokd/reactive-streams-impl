@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.akarnokd.rs.impl.subs;
+package com.github.akarnokd.rs.impl.ops;
 
 import java.util.Queue;
 import java.util.concurrent.atomic.*;
