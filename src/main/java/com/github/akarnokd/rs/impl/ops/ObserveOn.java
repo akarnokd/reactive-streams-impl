@@ -88,7 +88,7 @@ public final class ObserveOn<T> implements Publisher<T> {
         volatile boolean cancelled;
         
         static final Future<?> EMPTY_FUTURE = new EmptyFuture();
-        
+
         static final Future<?> CANCELLED_FUTURE = new EmptyFuture();
         
         static final Subscription CANCELLED_SUBSCRIPTION = new CancelledSubscription();
@@ -190,7 +190,6 @@ public final class ObserveOn<T> implements Publisher<T> {
         void emissionLoop() {
             long r = get();
             final long r0 = r;
-            Future<?> f = null;
             final Queue<T> q = queue;
             final Subscriber<? super T> s = actual;
             final boolean de = delayError;
@@ -240,12 +239,7 @@ public final class ObserveOn<T> implements Publisher<T> {
                         r = r0;
                     }
                 }
-                if (wip == 1) {
-                    f = future;
-                }
             } while (WIP.decrementAndGet(this) != 0);
-            
-            FUTURE.compareAndSet(this, f, EMPTY_FUTURE);
         }
         
         boolean checkFinish(boolean d, boolean empty, boolean de, Subscriber<? super T> s) {

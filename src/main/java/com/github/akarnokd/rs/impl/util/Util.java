@@ -17,7 +17,7 @@
 package com.github.akarnokd.rs.impl.util;
 
 import java.util.concurrent.atomic.*;
-import java.util.function.Consumer;
+import java.util.function.*;
 
 public enum Util {
     ;
@@ -77,6 +77,26 @@ public enum Util {
             }
         } else {
             queue.run();
+            if (wip.getAndIncrement() != 0) {
+                return;
+            }
+        }
+        drain.run();
+    }
+    
+    public static void fastpathIf(AtomicInteger wip, BooleanSupplier fast, 
+            BooleanSupplier queue, Runnable drain) {
+        if (wip.get() == 0 && wip.compareAndSet(0, 1)) {
+            if (fast.getAsBoolean()) {
+                return;
+            }
+            if (wip.decrementAndGet() == 0) {
+                return;
+            }
+        } else {
+            if (queue.getAsBoolean()) {
+                return;
+            }
             if (wip.getAndIncrement() != 0) {
                 return;
             }

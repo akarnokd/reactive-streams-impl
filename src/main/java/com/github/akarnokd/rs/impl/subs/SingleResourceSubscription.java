@@ -60,7 +60,6 @@ public final class SingleResourceSubscription extends AtomicReference<Resource> 
     public void setResource(Resource r) {
         Objects.requireNonNull(r);
         for (;;) {
-            @SuppressWarnings("resource")
             Resource res = get();
             if (res == CLOSED) {
                 r.close();

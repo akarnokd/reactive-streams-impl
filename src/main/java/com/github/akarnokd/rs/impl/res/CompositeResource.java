@@ -93,7 +93,7 @@ public final class CompositeResource extends AtomicInteger implements ResourceCo
     }
     
     void drain() {
-        final OpenHashSet<Resource> r = resources;
+        OpenHashSet<Resource> r = resources;
         final Queue<Resource> q = queue;
 
         do {
@@ -104,6 +104,7 @@ public final class CompositeResource extends AtomicInteger implements ResourceCo
                 if (res == CLOSE) {
                     resources = null;
                     r.clear(Resource::close);
+                    r = null;
                 } else
                 if (res == REMOVE_ALL) {
                     r.clear(Resource::close);
@@ -128,14 +129,16 @@ public final class CompositeResource extends AtomicInteger implements ResourceCo
     
     @Override
     public void close() {
-        Util.fastpath(this, () -> {
+        Util.fastpathIf(this, () -> {
             final OpenHashSet<Resource> r = resources;
             if (r != null) {
                 resources = null;
                 r.clear(Resource::close);
             }
+            return true;
         }, () -> {
             queue.offer(CLOSE);
+            return true;
         }, this::drain);
     }
     

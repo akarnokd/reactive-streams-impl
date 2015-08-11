@@ -207,4 +207,8 @@ public enum Publishers {
         }
         return new Filter(source, predicate);
     }
+    
+    public static <T, U> Publisher<T> takeUntil(Publisher<? extends T> source, Publisher<U> other) {
+        return new TakeUntil<>(source, other);
+    }
 }

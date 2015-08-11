@@ -39,7 +39,6 @@ public final class SerialResource extends AtomicReference<Resource> implements R
     public void setNext(Resource next) {
         Objects.requireNonNull(next);
         for (;;) {
-            @SuppressWarnings("resource")
             Resource ac = get();
             if (ac == CLOSED) {
                 next.close();
