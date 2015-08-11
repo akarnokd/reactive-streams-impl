@@ -27,7 +27,7 @@ import com.github.akarnokd.rs.Publishers;
 /**
  * Benchmark observeOn.
  * <p>
- * gradlew jmh "-Pjmh=ObserveOnPerf"
+ * gradlew jmh "-Pjmh=ObserveOnFlightPerf"
  */
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 5)

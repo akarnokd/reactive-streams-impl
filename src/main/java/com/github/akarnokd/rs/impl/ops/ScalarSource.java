@@ -37,9 +37,13 @@ public final class ScalarSource<T> implements Publisher<T> {
         s.onSubscribe(new ScalarSubscription<>(s, value));
     }
     
-    public <U> Publisher<U> flatMap(Function<? super T, ? extends Publisher<U>> mapper) {
+    public T value() {
+        return value;
+    }
+    
+    public <U> Publisher<U> flatMap(Function<? super T, ? extends Publisher<? extends U>> mapper) {
         return s -> {
-            Publisher<U> other;
+            Publisher<? extends U> other;
             try {
                 other = mapper.apply(value);
             } catch (Throwable e) {

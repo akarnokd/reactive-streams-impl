@@ -24,12 +24,11 @@ import org.reactivestreams.Publisher;
 import com.github.akarnokd.rs.Publishers;
 
 import rx.Observable;
-import rx.observables.BlockingObservable;
 
 /**
  * Example performance class.
  * <p>
- * gradlew jmh "-Pjmh=ConcatMapPerf"
+ * gradlew jmh "-Pjmh=FlatMapPerf"
  */
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 5)
@@ -37,27 +36,41 @@ import rx.observables.BlockingObservable;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Fork(value = 1)
 @State(Scope.Thread)
-public class ConcatMapPerf {
+public class FlatMapPerf {
     @Param({ "1", "1000", "1000000" })
     public int times;
 
     Publisher<Integer> source;
+    Publisher<Integer> source2;
     
-    BlockingObservable<Integer> rxSource;
+    Observable<Integer> rxSource;
+    Observable<Integer> rxSource2;
     
     @Setup
     public void setup() {
-        source = Publishers.concatMap(Publishers.range(0, times), Publishers::just);
+        Publisher<Integer> range = Publishers.range(0, times);
+        source = Publishers.flatMap(range, Publishers::just);
+        source2 = Publishers.flatMap(range, v -> Publishers.range(v, 2));
         
-        rxSource = Observable.range(0, times).concatMap(Observable::just).toBlocking();
+        Observable<Integer> rxRange = Observable.range(0, times);
+        rxSource = rxRange.flatMap(Observable::just);
+        rxSource2 = rxRange.flatMap(v -> Observable.range(v, 2));
     }
     
     @Benchmark
-    public Object concatMap() {
+    public Object flatMap() {
         return Publishers.getScalar(source);
     }
     @Benchmark
-    public Object rxConcatMap() {
-        return rxSource.last();
+    public Object flatMap2() {
+        return Publishers.getScalar(source2);
+    }
+    @Benchmark
+    public Object rxFlatMap() {
+        return rxSource.subscribe();
+    }
+    @Benchmark
+    public Object rxFlatMap2() {
+        return rxSource2.subscribe();
     }
 }
