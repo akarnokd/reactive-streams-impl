@@ -257,4 +257,16 @@ public enum Publishers {
     public static <T> Publisher<T> asPublisher(Publisher<? extends T> source) {
         return source::subscribe;
     }
+    
+    public static <T, U> Publisher<U> concatMap(Publisher<? extends T> source, Function<? super T, ? extends Publisher<? extends U>> mapper) {
+        return new ConcatMap<>(source, mapper);
+    }
+    
+    public static <T> Publisher<T> concat(Publisher<? extends Publisher<? extends T>> sources) {
+        return new ConcatMap<>(sources, v -> v);
+    }
+    @SafeVarargs
+    public static <T> Publisher<T> concat(Publisher<? extends T>... sources) {
+        return new ConcatMap<>(fromArray(sources), v -> v);
+    }
 }
