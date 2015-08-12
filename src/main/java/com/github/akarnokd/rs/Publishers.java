@@ -20,7 +20,7 @@ import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.Stream;
 
-import org.reactivestreams.Publisher;
+import org.reactivestreams.*;
 
 import com.github.akarnokd.rs.impl.ops.*;
 
@@ -32,7 +32,7 @@ public enum Publishers {
     /** Default backpressure buffer size. */
     private static int BUFFER_SIZE;
     static {
-        BUFFER_SIZE = Integer.getInteger("rsi.buffer-size", 256);
+        BUFFER_SIZE = Integer.getInteger("reactive-streams-impl.buffer-size", 256);
     }
     /**
      * Hides the identity of the source Publisher.
@@ -105,15 +105,18 @@ public enum Publishers {
             Function<? super T, ? extends Publisher<? extends U>> mapper) {
         return flatMap(source, mapper, false, Integer.MAX_VALUE, bufferSize());
     }
+    
     public static <T, U> Publisher<U> flatMap(Publisher<? extends T> source, 
             Function<? super T, ? extends Publisher<? extends U>> mapper, boolean delayErrors) {
         return flatMap(source, mapper, delayErrors, Integer.MAX_VALUE, bufferSize());
     }
+    
     public static <T, U> Publisher<U> flatMap(Publisher<? extends T> source, 
             Function<? super T, ? extends Publisher<? extends U>> mapper, 
                     boolean delayErrors, int maxConcurrency) {
         return flatMap(source, mapper, delayErrors, maxConcurrency, bufferSize());
     }
+    
     public static <T, U> Publisher<U> flatMap(Publisher<? extends T> source, 
             Function<? super T, ? extends Publisher<? extends U>> mapper, 
                     boolean delayErrors, int maxSubscription, int bufferSize) {
@@ -161,16 +164,26 @@ public enum Publishers {
         Objects.requireNonNull(source);
         return new IterableSource<>(source);
     }
+    
     public static <T> Publisher<T> fromStream(Stream<? extends T> source) {
         Objects.requireNonNull(source);
         return new StreamSource<>(source);
     }
+    
     public static <T> List<T> getList(Publisher<? extends T> source) {
         Objects.requireNonNull(source);
         ListSubscriber<T> s = new ListSubscriber<>();
         source.subscribe(s);
         return s.getList();
     }
+
+    public static <T> List<T> getList(Publisher<? extends T> source, long batchSize) {
+        Objects.requireNonNull(source);
+        ListBatchingSubscriber<T> s = new ListBatchingSubscriber<>(batchSize);
+        source.subscribe(s);
+        return s.getList();
+    }
+
     
     public static <T> List<T> getListNow(Publisher<? extends T> source) {
         Objects.requireNonNull(source);
@@ -223,6 +236,7 @@ public enum Publishers {
     public static <T> Publisher<T> merge(boolean delayErrors, int maxConcurrency, Publisher<? extends T>... sources) {
         return flatMap(fromArray(sources), v -> v, delayErrors, maxConcurrency);
     }
+    
     @SafeVarargs
     public static <T> Publisher<T> merge(boolean delayErrors, Publisher<? extends T>... sources) {
         return flatMap(fromArray(sources), v -> v, delayErrors);
@@ -325,7 +339,93 @@ public enum Publishers {
     }
 
     public static <T, U> Publisher<T> takeUntil(Publisher<? extends T> source, Publisher<U> other) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(other);
         return new TakeUntil<>(source, other);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> Publisher<T> skip(Publisher<? extends T> source, long n) {
+        Objects.requireNonNull(source);
+        if (n < 0) {
+            throw new IllegalArgumentException("limit >= 0 required");
+        } else
+        if (n == 0) {
+            return (Publisher<T>)source;
+        }
+        if (source instanceof Skip) {
+            Skip<? extends T> skip = (Skip<? extends T>) source;
+            return new Skip<>(skip.source(), n + skip.n());
+        }
+        return new Skip<>(source, n);
+    }
+    
+    public static <T> Publisher<T> takeUntil(Publisher<? extends T> source, Predicate<? super T> predicate) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(predicate);
+        
+        return new TakeUntilPredicate<>(source, predicate);
+    }
+
+    public static Publisher<Long> timer(long delay, TimeUnit unit, ScheduledExecutorService scheduler) {
+        return timer(delay, unit, () -> scheduler);
+    }
+    
+    public static Publisher<Long> timer(long delay, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier) {
+        return new TimerSource(delay, unit, schedulerSupplier);
+    }
+    
+    public static Publisher<Long> periodicTimer(long initialDelay, long period, TimeUnit unit, ScheduledExecutorService scheduler) {
+        return periodicTimer(initialDelay, period, unit, () -> scheduler);
+    }
+
+    public static Publisher<Long> periodicTimer(long initialDelay, long period, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier) {
+        return new PeriodicTimerSource(initialDelay, period, unit, schedulerSupplier);
+    }
+    
+    public static <T> Publisher<T> onNext(Publisher<? extends T> source, Consumer<? super T> onNext) {
+        return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, onNext, e -> { }, () -> { }));
+    }
+    
+    public static <T> Publisher<T> onError(Publisher<? extends T> source, Consumer<? super Throwable> onError) {
+        return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, v -> { }, onError, () -> { }));
+    }
+    
+    public static <T> Publisher<T> onComplete(Publisher<? extends T> source, Runnable onComplete) {
+        return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, v -> { }, e -> { }, onComplete));
+    }
+    
+    public static <T> Publisher<T> onEvent(Publisher<? extends T> source, Subscriber<? super T> subscriber) {
+        return new OnEvent<>(source, subscriber);
+    }
+    
+    public static <T> AutoCloseable subscribe(Publisher<? extends T> source, Consumer<? super T> onNext) {
+        return subscribe(source, onNext, e -> { }, () -> { }, s -> { });
+    }
+    
+    public static <T> AutoCloseable subscribe(Publisher<? extends T> source, Consumer<? super T> onNext, Consumer<? super Throwable> onError) {
+        return subscribe(source, onNext, onError, () -> { }, s -> { });
+    }
+
+    public static <T> AutoCloseable subscribe(Publisher<? extends T> source, Consumer<? super T> onNext, Consumer<? super Throwable> onError, Runnable onComplete) {
+        return subscribe(source, onNext, onError, onComplete, s -> { });
+    }
+
+    public static <T> AutoCloseable subscribe(Publisher<? extends T> source, Consumer<? super T> onNext, Consumer<? super Throwable> onError, Runnable onComplete, Consumer<? super Subscription> onSubscribe) {
+        CloseableCallbackSubscriber<T> ccs = new CloseableCallbackSubscriber<>(onSubscribe, onNext, onError, onComplete);
+        source.subscribe(ccs);
+        return ccs;
+    }
+    
+    public static <T> Publisher<T> onRequest(Publisher<? extends T> source, LongConsumer onRequest) {
+        return new OnRequestOrCancel<>(source, onRequest, () -> { });
+    }
+
+    public static <T> Publisher<T> onCancel(Publisher<? extends T> source, Runnable onCancel) {
+        return new OnRequestOrCancel<>(source, r -> { }, onCancel);
+    }
+    
+    public static <T> Publisher<T> onSubscription(Publisher<? extends T> source, LongConsumer onRequest, Runnable onCancel) {
+        return new OnRequestOrCancel<>(source, onRequest, onCancel);
+    }
 }
