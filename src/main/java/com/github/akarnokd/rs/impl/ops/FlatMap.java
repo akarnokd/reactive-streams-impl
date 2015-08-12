@@ -277,6 +277,8 @@ public final class FlatMap<T, U> implements Publisher<U> {
         @Override
         public void cancel() {
             cancelled = true;
+            s.cancel();
+            unsubscribe();
         }
         
         void drain() {
