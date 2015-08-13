@@ -22,7 +22,7 @@ import java.util.function.*;
 public enum Util {
     ;
     public static int roundUp(int capacity) {
-        int tz = 32 - Integer.numberOfLeadingZeros(capacity);
+        int tz = 32 - Integer.numberOfLeadingZeros(capacity - 1);
         return 1 << tz;
     }
     

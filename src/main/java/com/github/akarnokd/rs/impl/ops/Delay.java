@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 
 import org.reactivestreams.*;
 
-import com.github.akarnokd.rs.impl.queue.SpscLinkedArrayQueue;
 import com.github.akarnokd.rs.impl.res.IndexedResourceContainer;
 import com.github.akarnokd.rs.impl.subs.EmptySubscription;
 
@@ -101,7 +100,8 @@ public final class Delay<T> implements Publisher<T> {
             this.delay = delay;
             this.unit = unit;
             this.scheduler = scheduler;
-            this.queue = new SpscLinkedArrayQueue<>(bufferSize);
+            // FIXME until SpscLinkedArrayQueue is fixed
+            this.queue = new ConcurrentLinkedQueue<>();//new SpscLinkedArrayQueue<>(bufferSize);
             this.futures = new IndexedResourceContainer<>(bufferSize, f -> f.cancel(true));
         }
         
@@ -135,8 +135,6 @@ public final class Delay<T> implements Publisher<T> {
         
         @Override
         public void onError(Throwable t) {
-            error = t;
-            done = true;
             long index = producerIndex++;
             
             final IndexedResourceContainer<Future<?>> futures = this.futures;
@@ -144,6 +142,10 @@ public final class Delay<T> implements Publisher<T> {
             if (!futures.allocate(index)) {
                 return;
             }
+            
+            error = t;
+            done = true;
+            
             Future<?> f = scheduler.submit(() -> {
                 futures.deleteResource(index);
                 emit(index + 1);
