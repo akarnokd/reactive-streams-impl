@@ -114,6 +114,9 @@ public final class IndexedResourceContainer<T> extends AtomicReference<ARA> impl
                 if (o == CLOSED_ITEM) {
                     return;
                 }
+                if (!a.compareAndSet(idx, o, TOMBSTONE)) {
+                    return;
+                }
             }
             
             if (a.releaseOne() != capacity) {
@@ -139,6 +142,9 @@ public final class IndexedResourceContainer<T> extends AtomicReference<ARA> impl
                     if (!a.compareAndSet(idx, o, TOMBSTONE)) {
                         o = a.get(idx);
                         if (o == CLOSED_ITEM) {
+                            return;
+                        }
+                        if (!a.compareAndSet(idx, o, TOMBSTONE)) {
                             return;
                         }
                     }
