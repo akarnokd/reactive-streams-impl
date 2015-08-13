@@ -59,11 +59,11 @@ public class FlatMapPerf {
     
     @Benchmark
     public Object flatMap() {
-        return Publishers.getScalar(source);
+        return Publishers.getScalarNow(source);
     }
     @Benchmark
     public Object flatMap2() {
-        return Publishers.getScalar(source2);
+        return Publishers.getScalarNow(source2);
     }
     @Benchmark
     public Object rxFlatMap() {
