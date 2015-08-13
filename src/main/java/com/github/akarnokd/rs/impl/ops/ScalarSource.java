@@ -16,7 +16,6 @@
 
 package com.github.akarnokd.rs.impl.ops;
 
-import java.util.Objects;
 import java.util.function.Function;
 
 import org.reactivestreams.*;
@@ -33,7 +32,6 @@ public final class ScalarSource<T> implements Publisher<T> {
     }
     @Override
     public void subscribe(Subscriber<? super T> s) {
-        Objects.requireNonNull(s);
         s.onSubscribe(new ScalarSubscription<>(s, value));
     }
     

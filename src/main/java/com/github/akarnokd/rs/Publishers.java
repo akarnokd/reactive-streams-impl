@@ -368,10 +368,13 @@ public enum Publishers {
     }
 
     public static Publisher<Long> timer(long delay, TimeUnit unit, ScheduledExecutorService scheduler) {
+        Objects.requireNonNull(scheduler);
         return timer(delay, unit, () -> scheduler);
     }
     
     public static Publisher<Long> timer(long delay, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier) {
+        Objects.requireNonNull(unit);
+        Objects.requireNonNull(schedulerSupplier);
         return new TimerSource(delay, unit, schedulerSupplier);
     }
     
@@ -380,22 +383,32 @@ public enum Publishers {
     }
 
     public static Publisher<Long> periodicTimer(long initialDelay, long period, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier) {
+        Objects.requireNonNull(unit);
+        Objects.requireNonNull(schedulerSupplier);
         return new PeriodicTimerSource(initialDelay, period, unit, schedulerSupplier);
     }
     
     public static <T> Publisher<T> onNext(Publisher<? extends T> source, Consumer<? super T> onNext) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onNext);
         return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, onNext, e -> { }, () -> { }));
     }
     
     public static <T> Publisher<T> onError(Publisher<? extends T> source, Consumer<? super Throwable> onError) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onError);
         return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, v -> { }, onError, () -> { }));
     }
     
     public static <T> Publisher<T> onComplete(Publisher<? extends T> source, Runnable onComplete) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onComplete);
         return new OnEvent<>(source, new CallbackSubscriber<>(s -> { }, v -> { }, e -> { }, onComplete));
     }
     
     public static <T> Publisher<T> onEvent(Publisher<? extends T> source, Subscriber<? super T> subscriber) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(subscriber);
         return new OnEvent<>(source, subscriber);
     }
     
@@ -412,20 +425,44 @@ public enum Publishers {
     }
 
     public static <T> AutoCloseable subscribe(Publisher<? extends T> source, Consumer<? super T> onNext, Consumer<? super Throwable> onError, Runnable onComplete, Consumer<? super Subscription> onSubscribe) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onNext);
+        Objects.requireNonNull(onError);
+        Objects.requireNonNull(onComplete);
+        Objects.requireNonNull(onSubscribe);
         CloseableCallbackSubscriber<T> ccs = new CloseableCallbackSubscriber<>(onSubscribe, onNext, onError, onComplete);
         source.subscribe(ccs);
         return ccs;
     }
     
     public static <T> Publisher<T> onRequest(Publisher<? extends T> source, LongConsumer onRequest) {
-        return new OnRequestOrCancel<>(source, onRequest, () -> { });
+        return onSubscription(source, onRequest, () -> { });
     }
 
     public static <T> Publisher<T> onCancel(Publisher<? extends T> source, Runnable onCancel) {
-        return new OnRequestOrCancel<>(source, r -> { }, onCancel);
+        return onSubscription(source, r -> { }, onCancel);
     }
     
     public static <T> Publisher<T> onSubscription(Publisher<? extends T> source, LongConsumer onRequest, Runnable onCancel) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onRequest);
+        Objects.requireNonNull(onCancel);
         return new OnRequestOrCancel<>(source, onRequest, onCancel);
+    }
+    
+    public static <T> Publisher<T> delay(Publisher<? extends T> source, long delay, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier, int bufferSize) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(unit);
+        Objects.requireNonNull(schedulerSupplier);
+        return new Delay<>(source, delay, unit, schedulerSupplier, bufferSize);
+    }
+    
+    public static <T> Publisher<T> delay(Publisher<? extends T> source, long delay, TimeUnit unit, ScheduledExecutorService scheduler) {
+        Objects.requireNonNull(scheduler);
+        return delay(source, delay, unit, () -> scheduler, bufferSize());
+    }
+    public static <T> Publisher<T> delay(Publisher<? extends T> source, long delay, TimeUnit unit, ScheduledExecutorService scheduler, int bufferSize) {
+        Objects.requireNonNull(scheduler);
+        return delay(source, delay, unit, () -> scheduler, bufferSize);
     }
 }
