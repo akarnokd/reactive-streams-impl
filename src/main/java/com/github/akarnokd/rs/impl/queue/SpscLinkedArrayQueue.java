@@ -43,7 +43,7 @@ public final class SpscLinkedArrayQueue<T> implements Queue<T> {
     private static final Object HAS_NEXT = new Object();
 
     public SpscLinkedArrayQueue(final int bufferSize) {
-        int p2capacity = Util.roundUp(bufferSize);
+        int p2capacity = Util.roundUp(Math.max(bufferSize, 8));
         int mask = p2capacity - 1;
         AtomicReferenceArray<Object> buffer = new AtomicReferenceArray<>(p2capacity + 1);
         producerBuffer = buffer;

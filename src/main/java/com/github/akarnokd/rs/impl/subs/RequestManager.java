@@ -47,4 +47,12 @@ public enum RequestManager {
             }
         }
     }
+    
+    public static long multiplyAndCap(long base, long scale) {
+        long u = base * scale;
+        if (((u >>> 31) != 0) && (u / base != scale)) {
+            u = Long.MAX_VALUE;
+        }
+        return u;
+    }
 }

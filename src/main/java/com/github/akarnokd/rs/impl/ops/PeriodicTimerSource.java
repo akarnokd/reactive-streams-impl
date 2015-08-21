@@ -42,7 +42,6 @@ public final class PeriodicTimerSource implements Publisher<Long> {
     
     @Override
     public void subscribe(Subscriber<? super Long> s) {
-        // TODO Auto-generated method stub
         ScheduledExecutorService exec;
         try {
             exec = schedulerProvider.get();

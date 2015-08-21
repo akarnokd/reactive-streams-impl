@@ -461,8 +461,27 @@ public enum Publishers {
         Objects.requireNonNull(scheduler);
         return delay(source, delay, unit, () -> scheduler, bufferSize());
     }
+    
     public static <T> Publisher<T> delay(Publisher<? extends T> source, long delay, TimeUnit unit, ScheduledExecutorService scheduler, int bufferSize) {
         Objects.requireNonNull(scheduler);
         return delay(source, delay, unit, () -> scheduler, bufferSize);
+    }
+    
+    public static Publisher<Long> count(Publisher<?> source) {
+        Objects.requireNonNull(source);
+        return new Count(source);
+    }
+    
+    public static <T> Publisher<List<T>> buffer(Publisher<? extends T> source, int bufferSize) {
+        return buffer(source, ArrayList::new, bufferSize);
+    }
+    
+    public static <T, U extends Collection<T>> Publisher<U> buffer(Publisher<? extends T> source, Supplier<U> bufferSupplier, int bufferSize) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(bufferSupplier);
+        if (bufferSize <= 0) {
+            throw new IllegalArgumentException("bufferSize > 0 required but it was " + bufferSize);
+        }
+        return new Buffer<>(source, bufferSupplier, bufferSize);
     }
 }
