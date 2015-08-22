@@ -45,10 +45,7 @@ public final class SubscriptionArbiter extends AtomicInteger implements Subscrip
 
     private long addRequested(long n) {
         long r = requested;
-        long u = r + n;
-        if (u < 0L) {
-            u = Long.MAX_VALUE;
-        }
+        long u = RequestManager.addCap(r, n);
         requested = u;
         return r;
     }

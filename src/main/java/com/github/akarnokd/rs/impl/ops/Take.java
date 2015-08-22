@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.reactivestreams.*;
 
-import com.github.akarnokd.rs.impl.subs.EmptySubscription;
+import com.github.akarnokd.rs.impl.subs.*;
 
 /**
  * 
@@ -107,10 +107,7 @@ public final class Take<T> implements Publisher<T> {
                 if (r >= limit) {
                     return;
                 }
-                long u = r + n;
-                if (u < 0) {
-                    u = Long.MAX_VALUE;
-                }
+                long u = RequestManager.addCap(r, n);
                 if (compareAndSet(r, u)) {
                     if (u >= limit) {
                         subscription.request(Long.MAX_VALUE);

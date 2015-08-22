@@ -38,19 +38,24 @@ public enum RequestManager {
     public static <T> long add(AtomicLongFieldUpdater<T> updater, T instance, long n) {
         for (;;) {
             long r = updater.get(instance);
-            long u = r + n;
-            if (u < 0) {
-                u = Long.MAX_VALUE;
-            }
+            long u = addCap(r, n);
             if (updater.compareAndSet(instance, r, u)) {
                 return r;
             }
         }
     }
     
-    public static long multiplyAndCap(long base, long scale) {
+    public static long addCap(long a, long b) {
+        long u = a + b;
+        if (u < 0L) {
+            u = Long.MAX_VALUE;
+        }
+        return u;
+    }
+    
+    public static long multiplyCap(long base, long scale) {
         long u = base * scale;
-        if (((u >>> 31) != 0) && (u / base != scale)) {
+        if ((((base | scale) >>> 31) != 0) && (u / base != scale)) {
             u = Long.MAX_VALUE;
         }
         return u;

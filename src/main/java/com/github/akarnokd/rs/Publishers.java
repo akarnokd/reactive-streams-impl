@@ -484,4 +484,13 @@ public enum Publishers {
         }
         return new Buffer<>(source, bufferSupplier, bufferSize);
     }
+    
+    public static <T> Publisher<List<T>> bufferTimed(Publisher<? extends T> source, long period, TimeUnit unit, ScheduledExecutorService scheduler) {
+        return bufferTimed(source, period, unit, () -> scheduler, ArrayList::new, 8);
+    }
+
+    public static <T, U extends Collection<T>> Publisher<U> bufferTimed(Publisher<? extends T> source, long period, TimeUnit unit, 
+            Supplier<? extends ScheduledExecutorService> schedulerSupplier, Supplier<U> bufferSupplier, int queueSize) {
+        return new BufferTimed<>(source, period, unit, schedulerSupplier, bufferSupplier, queueSize);
+    }
 }

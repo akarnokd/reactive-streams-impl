@@ -106,7 +106,7 @@ public final class Buffer<T, U extends Collection<T>> implements Publisher<U> {
                 new IllegalArgumentException("n > 0 required but it was " + n).printStackTrace();
                 return;
             }
-            long u = RequestManager.multiplyAndCap(n, bufferSize);
+            long u = RequestManager.multiplyCap(n, bufferSize);
             s.request(u);
         }
         
