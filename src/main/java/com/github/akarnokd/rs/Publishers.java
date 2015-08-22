@@ -497,4 +497,56 @@ public enum Publishers {
     public static <T> Publisher<T> skipWhile(Publisher<? extends T> source, Predicate<? super T> predicate) {
         return new SkipWhile<>(source, predicate);
     }
+    
+    public static <T, U> Publisher<T> skipUntil(Publisher<? extends T> source, Publisher<U> other) {
+        return new SkipUntil<>(source, other);
+    }
+    
+    public static <T> Publisher<T> skipTimed(Publisher<? extends T> source, long delay, TimeUnit unit, ScheduledExecutorService scheduler) {
+        return skipTimed(source, delay, unit, () -> scheduler);
+    }
+
+    public static <T> Publisher<T> skipTimed(Publisher<? extends T> source, long delay, TimeUnit unit, Supplier<? extends ScheduledExecutorService> schedulerSupplier) {
+        return new SkipTimed<>(source, delay, unit, schedulerSupplier);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static <T> Publisher<T> skipLast(Publisher<? extends T> source, int skip) {
+        if (skip < 0) {
+            throw new IllegalArgumentException("skip >= 0 required but it was " + skip);
+        } else
+        if (skip == 0) {
+            return (Publisher<T>)source;
+        }
+        return new SkipLast<>(source, skip);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static <T> Publisher<T> ignoreElements(Publisher<? extends T> source) {
+        if (source instanceof IgnoreElements) {
+            return (Publisher<T>)source;
+        }
+        return new IgnoreElements<>(source);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static <T> Publisher<T> takeLast(Publisher<? extends T> source, int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException("count >= 0 required but it was " + count);
+        } else
+        if (count == 0) {
+            return ignoreElements(source);
+        } else
+        if (source instanceof ScalarSource) {
+            return (Publisher<T>)source;
+        } else
+        if (count == 1) {
+            if (source instanceof TakeLastOne) {
+                return (Publisher<T>)source;
+            }
+            return new TakeLastOne<>(source);
+        }
+        
+        return new TakeLast<>(source, count);
+    }
 }
