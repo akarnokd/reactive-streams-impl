@@ -13,68 +13,78 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.github.akarnokd.rs.impl.ops;
 
 import org.reactivestreams.*;
 
-import com.github.akarnokd.rs.impl.res.*;
+import com.github.akarnokd.rs.impl.res.FixedResourceContainer;
 
-/**
- * 
- */
-public final class TakeUntil<T, U> implements Publisher<T> {
+public final class SkipUntil<T, U> implements Publisher<T> {
     final Publisher<? extends T> source;
-    final Publisher<? extends U> other;
-    public TakeUntil(Publisher<? extends T> source, Publisher<? extends U> other) {
+    final Publisher<U> other;
+    public SkipUntil(Publisher<? extends T> source, Publisher<U> other) {
         this.source = source;
         this.other = other;
     }
+    
     @Override
     public void subscribe(Subscriber<? super T> child) {
+        
         SerializedSubscriber<T> serial = new SerializedSubscriber<>(child);
         
         FixedResourceContainer<Subscription> frc = new FixedResourceContainer<>(2, Subscription::cancel);
         
-        TakeUntilSubscriber<T> tus = new TakeUntilSubscriber<>(serial, frc); 
+        SkipUntilSubscriber<T> sus = new SkipUntilSubscriber<>(serial, frc);
         
         other.subscribe(new Subscriber<U>() {
+            Subscription s;
             @Override
             public void onSubscribe(Subscription s) {
-                frc.setResource(0, s);
+                if (this.s != null) {
+                    s.cancel();
+                    new IllegalStateException("Subscription already set!").printStackTrace();
+                    return;
+                }
+                this.s = s;
+                frc.setResource(1, s);
                 s.request(Long.MAX_VALUE);
             }
+            
             @Override
             public void onNext(U t) {
-                frc.close();
-                serial.onComplete();
+                s.cancel();
+                sus.notSkipping = true;
             }
+            
             @Override
             public void onError(Throwable t) {
                 frc.close();
                 serial.onError(t);
             }
+            
             @Override
             public void onComplete() {
-                frc.close();
-                serial.onComplete();
+                sus.notSkipping = true;
             }
         });
         
-        source.subscribe(tus);
+        source.subscribe(sus);
     }
     
-    static final class TakeUntilSubscriber<T> implements Subscriber<T>, Subscription {
+    static final class SkipUntilSubscriber<T> implements Subscriber<T>, Subscription {
         final Subscriber<? super T> actual;
         final FixedResourceContainer<Subscription> frc;
         
         Subscription s;
         
-        public TakeUntilSubscriber(Subscriber<? super T> actual, FixedResourceContainer<Subscription> frc) {
+        volatile boolean notSkipping;
+        boolean notSkippingLocal;
+
+        public SkipUntilSubscriber(Subscriber<? super T> actual, FixedResourceContainer<Subscription> frc) {
             this.actual = actual;
             this.frc = frc;
         }
-
+        
         @Override
         public void onSubscribe(Subscription s) {
             if (this.s != null) {
@@ -89,7 +99,15 @@ public final class TakeUntil<T, U> implements Publisher<T> {
         
         @Override
         public void onNext(T t) {
-            actual.onNext(t);
+            if (notSkippingLocal) {
+                actual.onNext(t);
+            } else
+            if (notSkipping) {
+                notSkippingLocal = true;
+                actual.onNext(t);
+            } else {
+                s.request(1);
+            }
         }
         
         @Override

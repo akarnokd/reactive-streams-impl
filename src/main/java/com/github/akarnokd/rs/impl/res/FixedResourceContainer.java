@@ -13,79 +13,63 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.github.akarnokd.rs.impl.res;
 
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Consumer;
 
-/**
- * Contains a fixed number of slots for other Resources.
- * <p>Warning: the class exposes methods of AtomicReferenceArray due to necessity
- * and one shouldn't call these methods. 
- */
-public final class FixedResourceList extends AtomicReferenceArray<Resource> implements Resource {
+public final class FixedResourceContainer<T> extends AtomicReferenceArray<Object> implements Resource {
     /** */
-    private static final long serialVersionUID = -71328743767168414L;
+    private static final long serialVersionUID = 6165384795300816654L;
+    final Consumer<? super T> closer;
+    private static final Object CLOSED = new Object();
     
-    static final Resource CLOSED = () -> { };
-    
-    public FixedResourceList(int capacity) {
+    public FixedResourceContainer(int capacity, Consumer<? super T> closer) {
         super(verify(capacity));
+        this.closer = closer;
     }
-    
-    public FixedResourceList(Resource... resources) {
-        this(resources.length);
-        int n = resources.length;
-        int n1 = n - 1;
-        for (int i = 0; i < n; i++) {
-            lazySet(i, resources[i]);
-        }
-        set(n1, resources[n1]);
-    }
-    
-    static final int verify(int capacity) {
+    static int verify(int capacity) {
         if (capacity < 2) {
-            throw new IllegalArgumentException("At least capacity of 2 is expected!");
+            throw new IllegalArgumentException("capacity >= 2 required but it was " + capacity);
         }
         return capacity;
     }
-    /**
-     * Sets a slot once and throws IllegalStateException otherwise.
-     * @param index
-     * @param resource
-     * @see #replaceResource(int, Resource)
-     */
-    public void setResource(int index, Resource resource) {
+    
+    public void setResource(int index, T resource) {
         if (!compareAndSet(index, null, resource)) {
             if (get(index) != CLOSED) {
                 throw new IllegalStateException("Slot " + index + " already set!");
             }
         }
     }
-    public void replaceResource(int index, Resource resource) {
+    
+    @SuppressWarnings("unchecked")
+    public void replaceResource(int index, T resource) {
         for (;;) {
-            Resource r = get(index);
+            Object r = get(index);
             if (r == CLOSED) {
-                resource.close();
+                closer.accept(resource);
                 return;
             }
             if (compareAndSet(index, r, resource)) {
                 if (r != null) {
-                    r.close();
+                    closer.accept((T)r);
                 }
                 return;
             }
         }
     }
     
+    @SuppressWarnings("unchecked")
     @Override
     public void close() {
-        for (int i = 0; i < length(); i++) {
-            Resource r = get(i);
+        int s = length();
+        for (int i = 0; i < s; i++) {
+            Object r = get(i);
             if (r != CLOSED) {
                 r = getAndSet(i, CLOSED);
                 if (r != CLOSED) {
-                    r.close();
+                    closer.accept((T)r);
                 }
             }
         }

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2011-2015 David Karnok
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.akarnokd.rs.impl.ops;
 
 import java.util.*;
@@ -157,10 +173,13 @@ public final class BufferTimed<T, U extends Collection<T>> implements Publisher<
         @SuppressWarnings("unchecked")
         void drain() {
             final Subscriber<? super U> a = actual;
-            final Queue<Object> q = queue;
             U b = buffer;
             long r = requested;
+            Queue<Object> q = null;
             do {
+                if (q == null) {
+                    q = queue;
+                }
                 boolean d = done;
                 boolean empty = q == null || q.isEmpty();
                 if (checkTerminated(d, empty, a)) {

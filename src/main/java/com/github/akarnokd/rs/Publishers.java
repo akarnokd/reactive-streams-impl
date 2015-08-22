@@ -493,4 +493,8 @@ public enum Publishers {
             Supplier<? extends ScheduledExecutorService> schedulerSupplier, Supplier<U> bufferSupplier, int queueSize) {
         return new BufferTimed<>(source, period, unit, schedulerSupplier, bufferSupplier, queueSize);
     }
+    
+    public static <T> Publisher<T> skipWhile(Publisher<? extends T> source, Predicate<? super T> predicate) {
+        return new SkipWhile<>(source, predicate);
+    }
 }
