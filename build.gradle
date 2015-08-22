@@ -91,3 +91,7 @@ jmh {
 plugins.withType(EclipsePlugin) {
     project.eclipse.classpath.plusConfigurations += [ configurations.jmh ]
 }
+
+javadoc {
+    failOnError = false
+}
