@@ -31,6 +31,7 @@ public final class ListSubscriber<T> extends AtomicReference<List<T>> implements
     final List<T> values;
     private AtomicReference<Throwable> error = new AtomicReference<>();
     private CountDownLatch cdl = new CountDownLatch(1);
+    Subscription s;
     public ListSubscriber() {
         values = new ArrayList<>();
     }
@@ -39,6 +40,7 @@ public final class ListSubscriber<T> extends AtomicReference<List<T>> implements
     }
     @Override
     public void onSubscribe(Subscription s) {
+        this.s = s;
         s.request(Long.MAX_VALUE);
     }
     @Override

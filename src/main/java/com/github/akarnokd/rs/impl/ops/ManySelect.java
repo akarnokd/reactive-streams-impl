@@ -22,7 +22,7 @@ import java.util.function.*;
 
 import org.reactivestreams.*;
 
-import com.github.akarnokd.rs.impl.res.CompositeResource;
+import com.github.akarnokd.rs.impl.res.*;
 import com.github.akarnokd.rs.impl.subs.*;
 
 /**
@@ -73,7 +73,7 @@ public final class ManySelect<T, R> implements Publisher<R> {
         final Function<? super Publisher<? extends T>, R> mapper;
         final ExecutorService exec;
         // FIXME use a more generic container
-        final CompositeResource tasks;
+        final IndexedResourceContainer<Future<?>> tasks;
         // FIXME use linked array list
         volatile List<Object> queue;
 
@@ -93,8 +93,9 @@ public final class ManySelect<T, R> implements Publisher<R> {
             this.actual = actual;
             this.mapper = mapper;
             this.exec = exec;
-            this.tasks = new CompositeResource();
+            this.tasks = new IndexedResourceContainer<>(256, f -> f.cancel(true));
             this.queue = new ArrayList<>();
+            lazySet(1);
         }
 
         @Override
@@ -119,23 +120,25 @@ public final class ManySelect<T, R> implements Publisher<R> {
             getAndIncrement();
             
             int s = q.size();
+            int unique = s >> 1;
+
+            if (!tasks.allocate(unique)) {
+                return;
+            }
+
+            ManySelectTaskPublisher<T, R> task = new ManySelectTaskPublisher<>(this, mapper, unique);
             
             q.add(t);
-
-            ManySelectTaskPublisher<T, R> task = new ManySelectTaskPublisher<>(this, mapper, s);
             q.add(task);
             
             Future<?> f = exec.submit(task);
-            tasks.add(() -> f.cancel(true));
-
+            tasks.setResource(unique, f);
+            
             s += 2;
             
             for (int i = 1; i < s; i += 2) {
                 @SuppressWarnings("unchecked")
                 ManySelectTaskPublisher<T, R> o = (ManySelectTaskPublisher<T, R>)q.get(i);
-
-                System.out.println(s + " -> " + (i >> 1));
-                
                 o.maxIndex = s;
                 o.drain();
             }
@@ -203,7 +206,7 @@ public final class ManySelect<T, R> implements Publisher<R> {
         final int index;
         
         int currentIndex;
-        int maxIndex;
+        volatile int maxIndex;
         
         volatile boolean cancelled;
         
@@ -218,31 +221,45 @@ public final class ManySelect<T, R> implements Publisher<R> {
                 AtomicLongFieldUpdater.newUpdater(ManySelectTaskPublisher.class, "requested");
         
         public ManySelectTaskPublisher(ManySelectSubscriber<T, R> parent,
-                Function<? super Publisher<? extends T>, R> mapper, int currentIndex) {
+                Function<? super Publisher<? extends T>, R> mapper, 
+                int currentIndex) {
             this.parent = parent;
             this.mapper = mapper;
             this.index = currentIndex;
-            this.currentIndex = currentIndex;
+            this.currentIndex = currentIndex << 1;
         }
 
         @Override
         public void run() {
             final ManySelectSubscriber<T, R> p = parent;
-            final Subscriber<? super R> a = p.actual;
-            R v;
             try {
-                v = mapper.apply(this);
-            } catch (Throwable e) {
-                p.cancel();
-                a.onError(e);
-                return;
+                final Subscriber<? super R> a = p.actual;
+                R v;
+                try {
+                    v = mapper.apply(this);
+                } catch (Throwable e) {
+                    p.cancel();
+                    a.onError(e);
+                    return;
+                }
+                
+                long r = p.requested;
+                if (r != 0L) {
+                    a.onNext(v);
+                    if (r != Long.MAX_VALUE) {
+                        ManySelectSubscriber.REQUESTED.decrementAndGet(p);
+                    }
+                    
+                    if (p.decrementAndGet() == 0) {
+                        a.onComplete();
+                    }
+                } else {
+                    p.cancel();
+                    a.onError(new IllegalStateException("Can't emit value due to lack of requests!"));
+                }
+            } finally {
+                p.tasks.deleteResource(index);
             }
-            a.onNext(v);
-            
-            if (p.decrementAndGet() == 0) {
-                a.onComplete();
-            }
-
         }
         
         @Override
@@ -259,7 +276,7 @@ public final class ManySelect<T, R> implements Publisher<R> {
         @Override
         public void request(long n) {
             if (n <= 0) {
-                new IllegalArgumentException("n > 0 required but it was " + n);
+                new IllegalArgumentException("n > 0 required but it was " + n).printStackTrace();;
                 return;
             }
             RequestManager.add(REQUESTED, this, n);
@@ -277,13 +294,11 @@ public final class ManySelect<T, R> implements Publisher<R> {
                 
                 final ManySelectSubscriber<T, R> p = parent;
                 final List<Object> q = p.queue;
-                final Subscriber<? super T> child = this.child;
+                Subscriber<? super T> child = this.child;
                 long r = requested;
+                int idx = currentIndex;
                 
                 for (;;) {
-                    
-                    int idx = currentIndex;
-                    
                     boolean d = p.done;
                     int maxIdx = maxIndex;
                     long e = 0L;
@@ -298,8 +313,6 @@ public final class ManySelect<T, R> implements Publisher<R> {
                         T t = (T)q.get(idx);
                         child.onNext(t);
                         
-                        System.out.println(index + " -> " + t);
-                        
                         if (cancelled) {
                             return;
                         }
@@ -312,8 +325,12 @@ public final class ManySelect<T, R> implements Publisher<R> {
                         return;
                     }
                     
-                    if (!unbounded && e != 0L) {
-                        r = REQUESTED.addAndGet(this, e);
+                    if (e != 0L) {
+                        if (!unbounded) {
+                            r = REQUESTED.addAndGet(this, e);
+                        } else {
+                            r = Long.MAX_VALUE;
+                        }
                     }
                     
                     currentIndex = idx;
@@ -321,6 +338,13 @@ public final class ManySelect<T, R> implements Publisher<R> {
                     missed = addAndGet(-missed);
                     if (missed == 0) {
                         break;
+                    }
+
+                    if (!unbounded) {
+                        r = requested;
+                    }
+                    if (child == null) {
+                        child = this.child;
                     }
                 }
             }

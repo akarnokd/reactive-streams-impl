@@ -577,4 +577,11 @@ public enum Publishers {
     public static Publisher<Double> sumDouble(Publisher<? extends Number> source) {
         return new SumDouble(source);
     }
+    
+    public static <T> Publisher<T> onSubscribe(Publisher<? extends T> source, Runnable run) {
+        return s -> {
+            run.run();
+            source.subscribe(s);
+        };
+    }
 }

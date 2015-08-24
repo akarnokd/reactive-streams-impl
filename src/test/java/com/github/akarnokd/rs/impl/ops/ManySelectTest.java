@@ -27,20 +27,125 @@ import com.github.akarnokd.rs.Publishers;
  *
  */
 public class ManySelectTest {
-    @Test
+    @Test(timeout = 60000)
     public void simple() {
-        ExecutorService exec = Executors.newSingleThreadExecutor();
-        try {
-            Publisher<Integer> source = Publishers.range(1, 10);
-            
-            Publisher<Integer> result = Publishers.merge(
-                    Publishers.manySelect(source, p -> Publishers.sumInteger(p), exec)
-            );
-            
-            List<Integer> list = Publishers.getList(result);
-            Assert.assertEquals(Arrays.asList(55, 54, 52, 49, 45, 40, 34, 27, 19, 10), list);
-        } finally {
-            exec.shutdownNow();
+        for (int j = 0; j < 50; j++) {
+            System.out.println("simple ==> " +j);
+            ExecutorService exec = Executors.newSingleThreadExecutor();
+            try {
+                for (int i = 0; i < 10000; i++) {
+                    if (i % 10 == 0) {
+                        System.out.println("   --> " + i);
+                    }
+                    simpleBody(exec);
+                }
+            } finally {
+                exec.shutdownNow();
+            }
         }
+    }
+    
+    @Test(timeout = 60000)
+    public void simpleSynchronous() {
+        for (int j = 0; j < 50; j++) {
+            System.out.println("simple ==> " +j);
+            CurrentExecutor exec = new CurrentExecutor();
+            try {
+                for (int i = 0; i < 10000; i++) {
+                    if (i % 100 == 0) {
+                        System.out.println("   --> " + i);
+                    }
+                    simpleBody(exec);
+                }
+            } finally {
+                exec.shutdownNow();
+            }
+        }
+    }
+    
+    static final class CurrentExecutor implements ExecutorService {
+
+        @Override
+        public void execute(Runnable command) {
+            
+        }
+
+        @Override
+        public void shutdown() {
+            
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            return null;
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return false;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return false;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return false;
+        }
+
+        @Override
+        public <T> Future<T> submit(Callable<T> task) {
+            return null;
+        }
+
+        @Override
+        public <T> Future<T> submit(Runnable task, T result) {
+            return null;
+        }
+
+        @Override
+        public Future<?> submit(Runnable task) {
+            task.run();
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
+            return null;
+        }
+
+        @Override
+        public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+                throws InterruptedException {
+            return null;
+        }
+
+        @Override
+        public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
+                throws InterruptedException, ExecutionException {
+            return null;
+        }
+
+        @Override
+        public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+                throws InterruptedException, ExecutionException, TimeoutException {
+            return null;
+        }
+        
+    }
+
+    static final Set<Integer> simpleSet = new HashSet<>(Arrays.asList(55, 54, 52, 49, 45, 40, 34, 27, 19, 10));
+    
+    private void simpleBody(ExecutorService exec) {
+        Publisher<Integer> source = Publishers.range(1, 10);
+        
+        Publisher<Integer> result = Publishers.merge(
+            Publishers.manySelect(source, p -> Publishers.sumInteger(p), exec)
+        );
+        
+        Set<Integer> list = new HashSet<>(Publishers.getList(result));
+        Assert.assertEquals(simpleSet, list);
     }
 }
