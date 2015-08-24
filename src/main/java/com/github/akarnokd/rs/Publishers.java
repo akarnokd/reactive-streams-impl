@@ -549,4 +549,32 @@ public enum Publishers {
         
         return new TakeLast<>(source, count);
     }
+    
+    public static <T, R> Publisher<R> manySelect(Publisher<? extends T> source, 
+            Function<? super Publisher<? extends T>, R> mapper,
+            Supplier<? extends ExecutorService> schedulerSupplier) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(mapper);
+        Objects.requireNonNull(schedulerSupplier);
+        return new ManySelect<>(source, mapper, schedulerSupplier);
+    }
+    
+    public static <T, R> Publisher<R> manySelect(Publisher<? extends T> source, 
+            Function<? super Publisher<? extends T>, R> mapper,
+            ExecutorService scheduler) {
+        Objects.requireNonNull(scheduler);
+        return manySelect(source, mapper, () -> scheduler);
+    }
+    
+    public static Publisher<Integer> sumInteger(Publisher<? extends Number> source) {
+        return new SumInteger(source);
+    }
+    
+    public static Publisher<Long> sumLong(Publisher<? extends Number> source) {
+        return new SumLong(source);
+    }
+    
+    public static Publisher<Double> sumDouble(Publisher<? extends Number> source) {
+        return new SumDouble(source);
+    }
 }
